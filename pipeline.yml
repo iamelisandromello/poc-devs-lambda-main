@@ -1,0 +1,44 @@
+name: Terraform Deployment
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  terraform:
+    name: Terraform Provisioning
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Setup Terraform CLI
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0  # Ajuste conforme a versão desejada
+          cli_config_credentials_token: ${{ secrets.TF_CLI_TOKEN }} # Opcional, se usar o Terraform Cloud
+
+      # Step 3: Configure AWS credentials
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      # Step 4: Initialize Terraform
+      - name: Terraform Init
+        run: terraform init -backend-config="bucket=${{ secrets.S3_BUCKET_NAME }}" -backend-config="key=terraform/state" -backend-config="region=us-east-1"
+
+      # Step 5: Terraform Plan
+      - name: Terraform Plan
+        run: terraform plan -var-file="values.auto.tfvars"
+
+      # Step 6: Terraform Apply
+      - name: Terraform Apply
+        run: terraform apply -var-file="values.auto.tfvars" -auto-approve
